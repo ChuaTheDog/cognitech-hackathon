@@ -6,28 +6,77 @@ import { motion } from 'framer-motion'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { AudioRecorder } from '@/components/AudioRecorder'
+import { ConversationInterface } from '@/components/ConversationInterface'
+
 
 export default function Home() {
   const [isGameActive, setIsGameActive] = useState(false)
-  const [hasRecorded, setHasRecorded] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isWelcomeAudioPlaying, setIsWelcomeAudioPlaying] = useState(false)
+  const [welcomeAudioPath, setWelcomeAudioPath] = useState<string | null>(null)
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
+  const [isWelcomeAudioComplete, setIsWelcomeAudioComplete] = useState(false)
+  const [isInstructionsSkipped, setIsInstructionsSkipped] = useState(false)
   const mobileMenuRef = useRef<HTMLDivElement>(null)
+  const audioRef = useRef<HTMLAudioElement>(null)
 
-  const handleRecordingComplete = (audioBlob: Blob) => {
-    setHasRecorded(true)
-    console.log('Recording completed:', audioBlob)
+
+  const generateWelcomeAudio = async () => {
+    setIsGeneratingAudio(true)
+    try {
+      const response = await fetch('/api/game/start', {
+        method: 'POST',
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setWelcomeAudioPath(data.audioPath)
+      } else {
+        console.error('Failed to generate welcome audio')
+      }
+    } catch (error) {
+      console.error('Error generating welcome audio:', error)
+    } finally {
+      setIsGeneratingAudio(false)
+    }
   }
 
-  const startGame = () => {
+  const startGame = async () => {
     setIsGameActive(true)
-    setHasRecorded(false)
+    if (!welcomeAudioPath) {
+      await generateWelcomeAudio()
+    }
   }
 
   const resetGame = () => {
     setIsGameActive(false)
-    setHasRecorded(false)
+    setIsWelcomeAudioComplete(false)
+    setIsInstructionsSkipped(false)
+    stopWelcomeAudio()
   }
+
+  const playWelcomeAudio = () => {
+    if (audioRef.current && welcomeAudioPath) {
+      audioRef.current.loop = false
+      audioRef.current.play()
+      setIsWelcomeAudioPlaying(true)
+    }
+  }
+
+  const stopWelcomeAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+      setIsWelcomeAudioPlaying(false)
+      setIsWelcomeAudioComplete(true)
+    }
+  }
+
+  const skipInstructions = () => {
+    stopWelcomeAudio()
+    setIsInstructionsSkipped(true)
+  }
+
 
   const scrollToFeatures = () => {
     const featuresSection = document.getElementById('features')
@@ -64,6 +113,21 @@ export default function Home() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [isMobileMenuOpen])
+
+  useEffect(() => {
+    if (welcomeAudioPath && isGameActive && !isWelcomeAudioPlaying) {
+      playWelcomeAudio()
+    }
+  }, [welcomeAudioPath, isGameActive])
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.currentTime = 0
+      }
+    }
+  }, [])
 
   return (
     <div className='flex min-h-screen flex-col'>
@@ -163,9 +227,9 @@ export default function Home() {
                 <span className='text-muted-foreground'>Mini-Game</span>
               </h1>
               <p className='max-w-[42rem] leading-normal text-muted-foreground sm:text-xl sm:leading-8'>
-                Test your voice recording skills! Record an audio file in WebM
-                format and see your recording come to life. Perfect for voice
-                notes, audio messages, or just having fun with sound.
+                Have a conversation with AI using your voice! Record audio messages
+                and receive intelligent responses. Perfect for interactive voice
+                conversations and AI-powered dialogue.
               </p>
             </div>
 
@@ -177,68 +241,91 @@ export default function Home() {
                       <Mic className='h-16 w-16 text-primary' />
                     </div>
                     <div className='space-y-2'>
-                      <h2 className='text-2xl font-bold'>Ready to Record?</h2>
+                      <h2 className='text-2xl font-bold'>Ready to Chat?</h2>
                       <p className='text-muted-foreground'>
-                        Click the button below to start the audio recording
-                        mini-game. You'll be able to record, pause, resume, and
-                        play back your audio.
+                        Click the button below to start a voice conversation with AI.
+                        You'll be able to record messages and receive intelligent responses.
                       </p>
                     </div>
                     <Button
                       onClick={startGame}
                       size='lg'
+                      disabled={isGeneratingAudio}
                       className='w-full px-4 py-4 text-base sm:w-auto sm:px-8 sm:py-6 sm:text-lg'
                     >
                       <Mic className='mr-2 h-4 w-4 sm:h-5 sm:w-5' />
-                      <span className='hidden sm:inline'>
-                        Start Recording Game
-                      </span>
-                      <span className='sm:hidden'>Start Game</span>
+                      {isGeneratingAudio ? (
+                        <span>Generating Audio...</span>
+                      ) : (
+                        <>
+                          <span className='hidden sm:inline'>
+                            Start Voice Chat
+                          </span>
+                          <span className='sm:hidden'>Start Chat</span>
+                        </>
+                      )}
                     </Button>
                   </CardContent>
                 </Card>
               ) : (
                 <div className='space-y-6'>
-                  <AudioRecorder
-                    onRecordingComplete={handleRecordingComplete}
-                  />
-
-                  {hasRecorded && (
-                    <Card className='border-green-200 bg-green-50'>
-                      <CardContent className='p-6 text-center'>
+                  {/* Welcome Audio Status */}
+                  {welcomeAudioPath && (
+                    <Card className='border-blue-200 bg-blue-50'>
+                      <CardContent className='p-6'>
                         <div className='space-y-4'>
-                          <div className='flex items-center justify-center'>
-                            <CheckCircle className='h-12 w-12 text-green-500' />
-                          </div>
                           <div className='space-y-2'>
-                            <h3 className='text-xl font-bold text-green-800'>
-                              Your answer is recorded!
+                            <h3 className='text-lg font-semibold text-blue-800'>
+                              Game Instructions
                             </h3>
-                            <p className='text-green-600'>
-                              Great job! You've successfully recorded your audio
-                              in WebM format. You can play it back, download it,
-                              or record again.
+                            <p className='text-blue-600 text-sm'>
+                              {isInstructionsSkipped
+                                ? 'Instructions skipped! You can now start recording.'
+                                : isWelcomeAudioPlaying 
+                                  ? 'Listen to the game rules and instructions...' 
+                                  : isWelcomeAudioComplete 
+                                    ? 'Instructions complete! You can now start recording.'
+                                    : 'Loading game instructions...'
+                              }
                             </p>
                           </div>
-                          <div className='flex justify-center gap-2'>
-                            <Button
-                              onClick={resetGame}
-                              variant='outline'
-                              className='border-green-300 text-green-700 hover:bg-green-100'
-                            >
-                              Play Again
-                            </Button>
-                            <Button
-                              onClick={resetGame}
-                              className='bg-green-600 hover:bg-green-700'
-                            >
-                              New Recording
-                            </Button>
-                          </div>
+                          {!isWelcomeAudioComplete && !isInstructionsSkipped && (
+                            <div className='flex justify-center'>
+                              <Button
+                                onClick={skipInstructions}
+                                variant='outline'
+                                size='sm'
+                                className='border-blue-300 text-blue-700 hover:bg-blue-100'
+                              >
+                                Skip Instructions
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
                   )}
+
+                  {/* Hidden Audio Element */}
+                  {welcomeAudioPath && (
+                    <audio
+                      ref={audioRef}
+                      src={welcomeAudioPath}
+                      preload='auto'
+                      onEnded={() => {
+                        setIsWelcomeAudioPlaying(false)
+                        setIsWelcomeAudioComplete(true)
+                      }}
+                      onError={() => {
+                        setIsWelcomeAudioPlaying(false)
+                        setIsWelcomeAudioComplete(true)
+                      }}
+                    />
+                  )}
+
+                  <ConversationInterface
+                    disabled={!isWelcomeAudioComplete && !isInstructionsSkipped}
+                  />
                 </div>
               )}
             </div>
@@ -249,7 +336,7 @@ export default function Home() {
         <div className='container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row'>
           <div className='flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0'>
             <p className='text-center text-sm leading-loose text-muted-foreground md:text-left'>
-              Audio Voice Mini-Game built with Next.js, Bun, and shadcn/ui.
+              AI Voice Conversation built with Next.js, Bun, and shadcn/ui.
               <a
                 href='https://github.com'
                 target='_blank'

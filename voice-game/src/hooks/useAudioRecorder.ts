@@ -18,7 +18,6 @@ export interface AudioRecorderControls {
   pauseRecording: () => void
   resumeRecording: () => void
   resetRecording: () => void
-  downloadRecording: () => void
 }
 
 export const useAudioRecorder = (): AudioRecorderState & AudioRecorderControls => {
@@ -177,18 +176,6 @@ export const useAudioRecorder = (): AudioRecorderState & AudioRecorderControls =
     })
   }, [state.isRecording, state.audioUrl])
 
-  const downloadRecording = useCallback(() => {
-    if (state.audioBlob) {
-      const url = URL.createObjectURL(state.audioBlob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `recording-${Date.now()}.webm`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    }
-  }, [state.audioBlob])
 
   return {
     ...state,
@@ -197,6 +184,5 @@ export const useAudioRecorder = (): AudioRecorderState & AudioRecorderControls =
     pauseRecording,
     resumeRecording,
     resetRecording,
-    downloadRecording,
   }
 }

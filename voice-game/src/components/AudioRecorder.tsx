@@ -1,15 +1,16 @@
 'use client'
 
-import { Mic, MicOff, Pause, Play, Square, Download, RotateCcw } from 'lucide-react'
+import { Mic, Pause, Play, Square, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAudioRecorder } from '@/hooks/useAudioRecorder'
 
 interface AudioRecorderProps {
   onRecordingComplete?: (audioBlob: Blob) => void
+  disabled?: boolean
 }
 
-export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
+export function AudioRecorder({ onRecordingComplete, disabled = false }: AudioRecorderProps) {
   const {
     isRecording,
     isPaused,
@@ -22,7 +23,6 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     pauseRecording,
     resumeRecording,
     resetRecording,
-    downloadRecording,
   } = useAudioRecorder()
 
   const formatTime = (seconds: number): string => {
@@ -87,9 +87,10 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
               onClick={startRecording}
               className="flex items-center gap-2"
               size="lg"
+              disabled={disabled}
             >
               <Mic className="h-4 w-4" />
-              Start Recording
+              {disabled ? 'Wait for instructions...' : 'Start Recording'}
             </Button>
           )}
 
@@ -135,23 +136,14 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
           )}
 
           {audioBlob && !isRecording && (
-            <>
-              <Button
-                onClick={downloadRecording}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Download
-              </Button>
-              <Button
-                onClick={handleReset}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Record Again
-              </Button>
-            </>
+            <Button
+              onClick={handleReset}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Record Again
+            </Button>
           )}
         </div>
 

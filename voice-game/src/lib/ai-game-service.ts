@@ -2,9 +2,7 @@ import { transcribeAudio } from './azure-speech.service';
 import { processGameTurn } from './game-logic.service';
 import { synthesizeSpeech } from './elevenlabs.service';
 
-/**
- * This is the main orchestrator function that manages a game turn.
- */
+
 export async function handleGameTurn(
   audioBlob: Blob,
   currentItems: string[]
@@ -13,7 +11,7 @@ export async function handleGameTurn(
     // Step 1: Transcribe Audio
     const userText = await transcribeAudio(audioBlob);
     if (!userText) {
-      throw new Error('Could not understand audio.');
+      throw new Error('I couldn\'t understand what you said. Please try speaking more clearly and slowly.');
     }
 
     // Step 2: Process Game Logic
@@ -26,8 +24,14 @@ export async function handleGameTurn(
         responseText = llmResult.response_text;
         newItems = llmResult.new_items;
     } else {
-        responseText = `Game over! ${llmResult.error_description}`;
-        newItems = []; // Reset the game
+        // Check if it's a technical error vs game over
+        if (llmResult.error_description && llmResult.error_description.includes("Technical error")) {
+            responseText = "I had trouble understanding that. Let's try again! Please speak clearly and repeat the items in order.";
+            newItems = currentItems; // Keep current items for retry
+        } else {
+            responseText = `Game over! ${llmResult.error_description}`;
+            newItems = []; // Reset the game
+        }
     }
 
     // Step 3: Synthesize Speech
