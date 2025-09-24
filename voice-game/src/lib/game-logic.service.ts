@@ -40,7 +40,7 @@ export async function processGameTurn(userText: string, currentItems: string[]):
       ]
   });
 
-  const rawResponse = response.choices[0].message.content!;
+  const rawResponse = response?.choices[0]?.message?.content!;
 
   // This handles cases where the LLM wraps the JSON in Markdown code blocks.
   try {

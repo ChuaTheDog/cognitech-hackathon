@@ -17,7 +17,7 @@ export async function POST() {
     const audioData = await synthesizeSpeech(WELCOME_MESSAGE);
 
     // Step 2: Send the audio response back to the frontend
-    return new NextResponse(audioData, {
+    return new NextResponse(Buffer.from(audioData), {
       status: 200,
       headers: { 'Content-Type': 'audio/mpeg' },
     });
