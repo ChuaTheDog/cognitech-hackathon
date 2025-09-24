@@ -1,42 +1,66 @@
+// ... all the imports
 import { transcribeAudio } from './azure-speech.service';
-import { processGameTurn } from './game-logic.service';
+import { getImageDescription } from './azure-vision.service';
+import { getVisualConversationResponse, ChatMessage } from './game-logic.service';
 import { synthesizeSpeech } from './elevenlabs.service';
 
 /**
- * This is the main orchestrator function that manages a game turn.
+ * Handles the very first step: gets an image and generates the opening question.
  */
-export async function handleGameTurn(
-  audioBlob: Blob,
-  currentItems: string[]
-): Promise<{ success: boolean; audioData?: Buffer; newItems?: string[]; error?: string }> {
+export async function handleVisualStart(
+  imageBuffer: Buffer
+): Promise<{ success: boolean; audioData?: Buffer; newHistory?: ChatMessage[]; error?: string }> {
   try {
-    // Step 1: Transcribe Audio
-    const userText = await transcribeAudio(audioBlob);
-    if (!userText) {
-      throw new Error('Could not understand audio.');
-    }
+    // Step 1: Get image description
+    const imageDescription = await getImageDescription(imageBuffer);
 
-    // Step 2: Process Game Logic
-    const llmResult = await processGameTurn(userText, currentItems);
+    // Step 2: Call LLM with an empty user query to get the opening question
+    const openingQuestion = await getVisualConversationResponse(imageDescription, "", []);
 
-    let responseText = '';
-    let newItems = currentItems;
+    // Step 3: Synthesize the opening question
+    const audioData = await synthesizeSpeech(openingQuestion);
 
-    if (llmResult.is_correct) {
-        responseText = llmResult.response_text;
-        newItems = llmResult.new_items;
-    } else {
-        responseText = `Game over! ${llmResult.error_description}`;
-        newItems = []; // Reset the game
-    }
+    // The new history starts with the AI's first question
+    const newHistory: ChatMessage[] = [
+      { role: 'assistant', content: openingQuestion }
+    ];
 
-    // Step 3: Synthesize Speech
-    const audioData = await synthesizeSpeech(responseText);
-
-    return { success: true, audioData, newItems };
+    return { success: true, audioData, newHistory };
 
   } catch (error: any) {
-    console.error("Error in handleGameTurn:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Handles a subsequent turn in the conversation.
+ */
+export async function handleVisualQuery(
+  audioBlob: Blob,
+  history: ChatMessage[],
+  // We no longer need the image buffer here, only the history
+): Promise<{ success: boolean; audioData?: Buffer; newHistory?: ChatMessage[]; error?: string }> {
+  try {
+    // Step 1: Transcribe user's answer
+    const userQuery = await transcribeAudio(audioBlob);
+
+    // Step 2: Get LLM's follow-up response
+    // The image description is now baked into the history from the first turn
+    const llmResponseText = await getVisualConversationResponse("", userQuery, history);
+    
+    // Step 3: Synthesize the response
+    const audioData = await synthesizeSpeech(llmResponseText);
+
+    // Update history
+    const newHistory: ChatMessage[] = [
+      ...history,
+      { role: 'user', content: userQuery },
+      { role: 'assistant', content: llmResponseText }
+    ];
+
+    return { success: true, audioData, newHistory };
+
+  } catch (error: any) {
     return { success: false, error: error.message };
   }
 }
