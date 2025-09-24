@@ -1,0 +1,102 @@
+{
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+      "sourceType": "module",
+      "ecmaVersion": "latest"
+    },
+    "extends": [
+      "next/core-web-vitals",
+      "plugin:@typescript-eslint/recommended"
+    ],
+    "settings": {
+      "tailwindcss": {
+        "callees": [
+          "classnames",
+          "clsx",
+          "cva",
+          "cn"
+        ]
+      }
+    },
+    "plugins": [
+      "eslint-plugin-react-compiler",
+      "simple-import-sort",
+      "unused-imports"
+    ],
+    "ignorePatterns": [
+      "src/codegen",
+      "node_modules",
+      "env",
+      "*.config.ts"
+    ],
+    "rules": {
+      "@next/next/no-img-element": "off",
+      "no-unused-vars": "off",
+      "unused-imports/no-unused-imports": "error",
+      "unused-imports/no-unused-vars": [
+        "off"
+      ],
+      "react/function-component-definition": [
+        2,
+        {
+          "namedComponents": "function-declaration"
+        }
+      ],
+      "@typescript-eslint/consistent-type-definitions": [
+        "error",
+        "type"
+      ],
+      "@typescript-eslint/naming-convention": [
+        "warn",
+        {
+          "selector": "function",
+          "format": [
+            "PascalCase",
+            "camelCase"
+          ],
+          "leadingUnderscore": "allow"
+        },
+        {
+          "selector": "import",
+          "format": [
+            "camelCase",
+            "PascalCase"
+          ]
+        },
+        {
+          "selector": "variable",
+          "format": [
+            "camelCase",
+            "UPPER_CASE",
+            "PascalCase"
+          ],
+          "leadingUnderscore": "allow"
+        },
+        {
+          "selector": "typeLike",
+          "format": [
+            "PascalCase"
+          ]
+        }
+      ],
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unused-vars": "off",
+      "import/first": "warn",
+      "tailwindcss/no-custom-classname": "off",
+      "simple-import-sort/imports": "warn",
+      "simple-import-sort/exports": "warn",
+      "import/newline-after-import": "warn",
+      "import/no-duplicates": "warn",
+      "tailwindcss/migration-from-tailwind-2": "off",
+      "react-compiler/react-compiler": "error",
+      "react/no-unescaped-entities": "off",
+      "no-restricted-properties": [
+        "error",
+        {
+          "object": "process",
+          "property": "env",
+          "message": "Use `import { env } from \"@/../env\" instead`"
+        }
+      ]
+    }
+  }
