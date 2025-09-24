@@ -207,10 +207,10 @@ export function ConversationInterface({ disabled = false }: ConversationInterfac
                   onClick={startRecording}
                   className="flex items-center gap-2"
                   size="lg"
-                  disabled={disabled}
+                  disabled={disabled || isBotTalking}
                 >
                   <Mic className="h-4 w-4" />
-                  {disabled ? 'Wait for instructions...' : 'Start Recording'}
+                  {disabled ? 'Wait for instructions...' : isBotTalking ? 'Bot is speaking...' : 'Start Recording'}
                 </Button>
               )}
 
