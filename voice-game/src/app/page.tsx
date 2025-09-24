@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle, Mic, Gamepad2, Menu, X } from 'lucide-react'
+import {  Mic, Gamepad2, Menu, X } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 
@@ -48,13 +48,6 @@ export default function Home() {
     }
   }
 
-  const resetGame = () => {
-    setIsGameActive(false)
-    setIsWelcomeAudioComplete(false)
-    setIsInstructionsSkipped(false)
-    stopWelcomeAudio()
-  }
-
   const playWelcomeAudio = () => {
     if (audioRef.current && welcomeAudioPath) {
       audioRef.current.loop = false
@@ -75,17 +68,6 @@ export default function Home() {
   const skipInstructions = () => {
     stopWelcomeAudio()
     setIsInstructionsSkipped(true)
-  }
-
-
-  const scrollToFeatures = () => {
-    const featuresSection = document.getElementById('features')
-    if (featuresSection) {
-      featuresSection.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      })
-    }
   }
 
   const scrollToTop = () => {
@@ -142,7 +124,6 @@ export default function Home() {
             title='Click to scroll to top'
           >
             <Gamepad2 className='h-8 w-8 text-primary' />
-            <span className='text-xl font-bold'>Voice Game</span>
           </motion.div>
           <nav className='hidden items-center space-x-6 md:flex'>
             <Button
@@ -186,22 +167,6 @@ export default function Home() {
                   variant='ghost'
                   className='w-full justify-start'
                   onClick={() => {
-                    scrollToFeatures()
-                    setIsMobileMenuOpen(false)
-                  }}
-                >
-                  Features
-                </Button>
-              </motion.div>
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className='w-full'
-              >
-                <Button
-                  variant='ghost'
-                  className='w-full justify-start'
-                  onClick={() => {
                     window.open('https://github.com', '_blank')
                     setIsMobileMenuOpen(false)
                   }}
@@ -220,16 +185,13 @@ export default function Home() {
             <div className='space-y-4'>
               <h1 className='font-heading text-3xl sm:text-5xl md:text-6xl'>
                 <span className='flex items-center justify-center gap-4'>
-                  <Gamepad2 className='h-16 w-16 text-primary sm:h-20 sm:w-20' />
-                  Audio Recording
+                  Voice Recording
                 </span>
-                <br />
                 <span className='text-muted-foreground'>Mini-Game</span>
               </h1>
               <p className='max-w-[42rem] leading-normal text-muted-foreground sm:text-xl sm:leading-8'>
                 Have a conversation with AI using your voice! Record audio messages
-                and receive intelligent responses. Perfect for interactive voice
-                conversations and AI-powered dialogue.
+                and receive intelligent responses
               </p>
             </div>
 
