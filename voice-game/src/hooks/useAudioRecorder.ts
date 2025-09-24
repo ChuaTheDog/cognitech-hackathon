@@ -14,7 +14,7 @@ export interface AudioRecorderState {
 
 export interface AudioRecorderControls {
   startRecording: () => Promise<void>
-  stopRecording: () => void
+  stopRecording: () => Promise<Blob | null>
   pauseRecording: () => void
   resumeRecording: () => void
   resetRecording: () => void
@@ -108,15 +108,52 @@ export const useAudioRecorder = (): AudioRecorderState & AudioRecorderControls =
     }
   }, [])
 
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && state.isRecording) {
-      mediaRecorderRef.current.stop()
-    }
+  const stopRecording = useCallback((): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      if (mediaRecorderRef.current && state.isRecording) {
+        // Set up a one-time listener for the stop event
+        const handleStop = () => {
+          const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' })
+          const audioUrl = URL.createObjectURL(audioBlob)
+          
+          setState(prev => ({
+            ...prev,
+            audioBlob,
+            audioUrl,
+            isRecording: false,
+            isPaused: false,
+          }))
 
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
+          // Clean up
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop())
+            streamRef.current = null
+          }
+
+          resolve(audioBlob)
+        }
+
+        // Override the onstop handler temporarily
+        const originalOnStop = mediaRecorderRef.current.onstop
+        mediaRecorderRef.current.onstop = handleStop
+        
+        mediaRecorderRef.current.stop()
+        
+        // Restore original handler
+        setTimeout(() => {
+          if (mediaRecorderRef.current) {
+            mediaRecorderRef.current.onstop = originalOnStop
+          }
+        }, 100)
+      } else {
+        resolve(null)
+      }
+
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    })
   }, [state.isRecording])
 
   const pauseRecording = useCallback(() => {

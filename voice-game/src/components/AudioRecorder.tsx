@@ -1,6 +1,6 @@
 'use client'
 
-import { Mic, Pause, Play, Square, RotateCcw } from 'lucide-react'
+import { Mic, X, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAudioRecorder } from '@/hooks/useAudioRecorder'
@@ -13,15 +13,12 @@ interface AudioRecorderProps {
 export function AudioRecorder({ onRecordingComplete, disabled = false }: AudioRecorderProps) {
   const {
     isRecording,
-    isPaused,
     recordingTime,
     audioBlob,
     audioUrl,
     error,
     startRecording,
     stopRecording,
-    pauseRecording,
-    resumeRecording,
     resetRecording,
   } = useAudioRecorder()
 
@@ -31,14 +28,14 @@ export function AudioRecorder({ onRecordingComplete, disabled = false }: AudioRe
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  const handleStopRecording = () => {
-    stopRecording()
-    if (audioBlob && onRecordingComplete) {
-      onRecordingComplete(audioBlob)
+  const handleSendRecording = async () => {
+    const recordedBlob = await stopRecording()
+    if (recordedBlob && onRecordingComplete) {
+      onRecordingComplete(recordedBlob)
     }
   }
 
-  const handleReset = () => {
+  const handleCancelRecording = () => {
     resetRecording()
   }
 
@@ -60,7 +57,7 @@ export function AudioRecorder({ onRecordingComplete, disabled = false }: AudioRe
             <div className="flex items-center justify-center gap-2 text-red-500">
               <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
               <span className="font-medium">
-                {isPaused ? 'Paused' : 'Recording'} - {formatTime(recordingTime)}
+                Recording - {formatTime(recordingTime)}
               </span>
             </div>
           )}
@@ -82,7 +79,7 @@ export function AudioRecorder({ onRecordingComplete, disabled = false }: AudioRe
 
         {/* Recording Controls */}
         <div className="flex justify-center gap-2">
-          {!isRecording && !audioBlob && (
+          {!isRecording && (
             <Button
               onClick={startRecording}
               className="flex items-center gap-2"
@@ -94,56 +91,25 @@ export function AudioRecorder({ onRecordingComplete, disabled = false }: AudioRe
             </Button>
           )}
 
-          {isRecording && !isPaused && (
+          {isRecording && (
             <>
               <Button
-                onClick={pauseRecording}
+                onClick={handleCancelRecording}
                 variant="outline"
                 className="flex items-center gap-2"
               >
-                <Pause className="h-4 w-4" />
-                Pause
+                <X className="h-4 w-4" />
+                Cancel
               </Button>
               <Button
-                onClick={handleStopRecording}
+                onClick={handleSendRecording}
                 variant="destructive"
                 className="flex items-center gap-2"
               >
-                <Square className="h-4 w-4" />
-                Stop
+                <Send className="h-4 w-4" />
+                Send
               </Button>
             </>
-          )}
-
-          {isRecording && isPaused && (
-            <>
-              <Button
-                onClick={resumeRecording}
-                className="flex items-center gap-2"
-              >
-                <Play className="h-4 w-4" />
-                Resume
-              </Button>
-              <Button
-                onClick={handleStopRecording}
-                variant="destructive"
-                className="flex items-center gap-2"
-              >
-                <Square className="h-4 w-4" />
-                Stop
-              </Button>
-            </>
-          )}
-
-          {audioBlob && !isRecording && (
-            <Button
-              onClick={handleReset}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Record Again
-            </Button>
           )}
         </div>
 

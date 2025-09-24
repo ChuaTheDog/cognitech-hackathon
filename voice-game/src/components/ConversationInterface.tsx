@@ -1,6 +1,6 @@
 'use client'
 
-import { Mic, Send, Loader2 } from 'lucide-react'
+import { Mic, Send, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAudioRecorder } from '@/hooks/useAudioRecorder'
@@ -24,8 +24,6 @@ export function ConversationInterface({ disabled = false }: ConversationInterfac
     error,
     startRecording,
     stopRecording,
-    pauseRecording,
-    resumeRecording,
     resetRecording,
   } = useAudioRecorder()
 
@@ -82,17 +80,70 @@ export function ConversationInterface({ disabled = false }: ConversationInterfac
     }
   }
 
-  const handleStopRecording = () => {
-    stopRecording()
-    if (audioBlob) {
-      handleSendAudio()
+  const handleSendRecording = async () => {
+    // Stop recording and immediately send the message
+    const recordedBlob = await stopRecording()
+    if (recordedBlob) {
+      // Create a temporary audioBlob for sending
+      const tempAudioBlob = recordedBlob
+      setIsProcessing(true)
+      
+      try {
+        // Send audio to AI
+        const formData = new FormData()
+        formData.append('audio', tempAudioBlob, 'recording.webm')
+        formData.append('currentItems', JSON.stringify(currentItems))
+
+        const response = await fetch('/api/game', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          const audioData = Buffer.from(result.audioData, 'base64')
+          const audioBlob = new Blob([audioData], { type: 'audio/mpeg' })
+          const audioUrl = URL.createObjectURL(audioBlob)
+
+          setCurrentItems(result.newItems || [])
+
+          if (audioRef.current) {
+            audioRef.current.src = audioUrl
+            setIsBotTalking(true)
+            audioRef.current.play()
+            audioRef.current.onended = () => {
+              setIsBotTalking(false)
+            }
+            audioRef.current.onerror = () => {
+              setIsBotTalking(false)
+            }
+          }
+        } else {
+          throw new Error('Failed to get AI response')
+        }
+      } catch (error) {
+        console.error('Error sending audio:', error)
+      } finally {
+        setIsProcessing(false)
+        resetRecording()
+      }
     }
+  }
+
+  const handleCancelRecording = () => {
+    resetRecording()
   }
 
   const resetGame = () => {
     setCurrentItems([])
     setIsBotTalking(false)
     resetRecording()
+    
+    // Stop any playing audio
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+    }
   }
 
   return (
@@ -151,81 +202,54 @@ export function ConversationInterface({ disabled = false }: ConversationInterfac
 
             {/* Controls */}
             <div className="flex justify-center gap-2">
-              {!isRecording && !audioBlob && (
+              {!isRecording && !isProcessing && (
                 <Button
                   onClick={startRecording}
                   className="flex items-center gap-2"
                   size="lg"
-                  disabled={disabled || isProcessing}
+                  disabled={disabled}
                 >
                   <Mic className="h-4 w-4" />
                   {disabled ? 'Wait for instructions...' : 'Start Recording'}
                 </Button>
               )}
 
-              {isRecording && !isPaused && (
+              {isProcessing && (
+                <Button
+                  disabled
+                  className="flex items-center gap-2"
+                  size="lg"
+                >
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sending...
+                </Button>
+              )}
+
+              {isRecording && (
                 <>
                   <Button
-                    onClick={pauseRecording}
+                    onClick={handleCancelRecording}
                     variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    Pause
-                  </Button>
-                  <Button
-                    onClick={handleStopRecording}
-                    variant="destructive"
-                    className="flex items-center gap-2"
-                  >
-                    Send Message
-                  </Button>
-                </>
-              )}
-
-              {isRecording && isPaused && (
-                <>
-                  <Button
-                    onClick={resumeRecording}
-                    className="flex items-center gap-2"
-                  >
-                    Resume
-                  </Button>
-                  <Button
-                    onClick={handleStopRecording}
-                    variant="destructive"
-                    className="flex items-center gap-2"
-                  >
-                    Send Message
-                  </Button>
-                </>
-              )}
-
-              {audioBlob && !isRecording && (
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleSendAudio}
                     className="flex items-center gap-2"
                     disabled={isProcessing}
                   >
-                    {isProcessing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                    {isProcessing ? 'Sending...' : 'Send Message'}
-                  </Button>
-                  <Button
-                    onClick={resetRecording}
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
+                    <X className="h-4 w-4" />
                     Cancel
                   </Button>
-                </div>
+                  <Button
+                    onClick={handleSendRecording}
+                    variant="destructive"
+                    className="flex items-center gap-2"
+                    disabled={isProcessing}
+                  >
+                    <Send className="h-4 w-4" />
+                    Send Message
+                  </Button>
+                </>
               )}
 
               {/* Reset Game Button */}
-              {currentItems.length > 0 && !isRecording && !audioBlob && (
+              {currentItems.length > 0 && !isRecording && !isProcessing && (
                 <Button
                   onClick={resetGame}
                   variant="outline"
