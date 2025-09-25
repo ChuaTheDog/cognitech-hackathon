@@ -64,3 +64,7 @@ export async function handleVisualQuery(
     return { success: false, error: error.message };
   }
 }
+
+
+
+
