@@ -1,10 +1,12 @@
+
 'use client'
 
-import { Image as ImageIcon, Loader2, X } from 'lucide-react'
+import { Image as ImageIcon, Loader2, X, Mic, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useRef, useState } from 'react'
 import type React from 'react'
+import { useAudioRecorder } from '@/hooks/useAudioRecorder'
 
 interface ConversationInterfaceProps {
   disabled?: boolean
@@ -16,8 +18,25 @@ export function ConversationInterface({ disabled = false }: ConversationInterfac
   const [dragActive, setDragActive] = useState(false)
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [conversationHistory, setConversationHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([])
   const audioRef = useRef<HTMLAudioElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const {
+    isRecording,
+    isPaused,
+    recordingTime,
+    startRecording,
+    stopRecording,
+    resetRecording,
+    error: recordingError,
+  } = useAudioRecorder()
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
 
   const clearSelection = () => {
     if (selectedImageUrl) {
@@ -66,12 +85,54 @@ export function ConversationInterface({ disabled = false }: ConversationInterfac
       if (typeof base64 !== 'string' || base64.length === 0) {
         throw new Error('No audio data returned')
       }
+      if (Array.isArray(result?.history)) {
+        setConversationHistory(result.history as Array<{ role: 'user' | 'assistant'; content: string }>)
+      }
       handlePlayAudioBase64(base64)
     } catch (err) {
       console.error('Error sending image:', err)
       setErrorMessage(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setIsProcessing(false)
+    }
+  }
+
+  const handleSendRecording = async () => {
+    // Stop recording and immediately send the message
+    const recordedBlob = await stopRecording()
+    if (!recordedBlob) return
+
+    setIsProcessing(true)
+    setErrorMessage(null)
+    try {
+      const formData = new FormData()
+      formData.append('audio', recordedBlob, 'recording.webm')
+      formData.append('history', JSON.stringify(conversationHistory))
+
+      const response = await fetch('/api/game/voice', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response')
+      }
+
+      const result = await response.json()
+      const base64 = result?.audio
+      if (typeof base64 !== 'string' || base64.length === 0) {
+        throw new Error('No audio data returned')
+      }
+      if (Array.isArray(result?.history)) {
+        setConversationHistory(result.history as Array<{ role: 'user' | 'assistant'; content: string }>)
+      }
+      handlePlayAudioBase64(base64)
+    } catch (err) {
+      console.error('Error sending audio:', err)
+      setErrorMessage(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setIsProcessing(false)
+      resetRecording()
     }
   }
 
@@ -127,6 +188,7 @@ export function ConversationInterface({ disabled = false }: ConversationInterfac
   const resetAll = () => {
     clearSelection()
     setIsBotTalking(false)
+    setConversationHistory([])
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current.currentTime = 0
@@ -135,6 +197,7 @@ export function ConversationInterface({ disabled = false }: ConversationInterfac
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
+    resetRecording()
   }
 
   return (
@@ -144,9 +207,11 @@ export function ConversationInterface({ disabled = false }: ConversationInterfac
           <div className="text-center space-y-4">
             <div className="space-y-1">
               {isProcessing ? (
-                <p className="text-blue-600 font-medium">Processing your image...</p>
+                <p className="text-blue-600 font-medium">{conversationHistory.length > 0 ? 'Processing your message...' : 'Processing your image...'}</p>
               ) : isBotTalking ? (
                 <p className="text-yellow-600 font-medium">Playing response...</p>
+              ) : conversationHistory.length > 0 ? (
+                <p className="text-green-600 font-medium">Ready for your voice input</p>
               ) : (
                 <p className="text-muted-foreground">Drop an image to get an audio response</p>
               )}
@@ -204,7 +269,7 @@ export function ConversationInterface({ disabled = false }: ConversationInterfac
                 </div>
               )}
 
-              {(selectedImageUrl || isBotTalking) && (
+              {(selectedImageUrl || isBotTalking || conversationHistory.length > 0) && (
                 <div className="flex items-center gap-2 mt-2">
                    <Button
                     variant="outline"
@@ -221,6 +286,75 @@ export function ConversationInterface({ disabled = false }: ConversationInterfac
           </div>
         </CardContent>
       </Card>
+
+      {conversationHistory.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="space-y-4">
+              {isRecording && (
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 text-red-500">
+                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                    <span className="font-medium">
+                      {isPaused ? 'Paused' : 'Recording'} - {formatTime(recordingTime)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {(recordingError || errorMessage) && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-sm text-red-600">{recordingError || errorMessage}</p>
+                </div>
+              )}
+
+              <div className="flex justify-center gap-2">
+                {!isRecording && !isProcessing && (
+                  <Button
+                    onClick={startRecording}
+                    className="flex items-center gap-2"
+                    size="lg"
+                    disabled={disabled || isBotTalking}
+                  >
+                    <Mic className="h-4 w-4" />
+                    {disabled ? 'Wait for instructions...' : isBotTalking ? 'Bot is speaking...' : 'Start Recording'}
+                  </Button>
+                )}
+
+                {isProcessing && (
+                  <Button disabled className="flex items-center gap-2" size="lg">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Sending...
+                  </Button>
+                )}
+
+                {isRecording && (
+                  <>
+                    <Button
+                      onClick={resetRecording}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                      disabled={isProcessing}
+                    >
+                      <X className="h-4 w-4" />
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleSendRecording}
+                      variant="destructive"
+                      className="flex items-center gap-2"
+                      disabled={isProcessing}
+                    >
+                      <Send className="h-4 w-4" />
+                      Send Message
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <audio ref={audioRef} />
     </div>
