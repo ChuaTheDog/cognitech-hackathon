@@ -24,52 +24,44 @@ export async function processGameTurn(userText: string, currentItems: string[]):
     `;
 
   const itemsStr = currentItems.join(', ');
-  const isFirstTurn = currentItems.length === 0;
 
-  const userPrompt = isFirstTurn
-    ? `This is the first turn. The player said: "${userText}".
-       
-       TASK: Extract the item the player is packing. Be flexible with speech recognition errors:
-       - Look for common item words even if misspelled
-       - Consider phonetic similarities (e.g., "shirt" might be heard as "shert")
-       - If unclear, make your best guess based on context
-       - Common items include: clothes, toiletries, electronics, books, etc.
-       
-       BLACKLIST: If the player says "hat", replace it with a different item like "cap", "beanie", or "headband".
-       
-       Then invent and add your own next item that's different from the player's item.
-       Formulate the response according to the template "I'm packing my suitcase and in it I have [player's item] and [your item]".
-       
-       Return a JSON object in the format:
-       {"is_correct": true, "new_items": ["player item", "your item"], "response_text": "your formulated response"}
-      `
-    : `The current list of items is: [${itemsStr}].
-       The player's phrase is: "${userText}".
-       
-       TASK: Check if the player correctly repeated all items in order and added one new item.
-       
-       BE FLEXIBLE with speech recognition errors:
-       - Items may be pronounced differently due to accents
-       - Words may be misspelled or partially heard
-       - Use fuzzy matching - if an item sounds similar to the expected item, accept it
-       - Focus on the overall pattern rather than exact word matches
-       - If 80% of the items are recognizable and in the right order, consider it correct
-       
-       Examples of acceptable variations:
-       - "shirt" could be heard as "shert", "shurt", "shirt"
-       - "toothbrush" could be heard as "tooth brush", "toothbrush", "toothbrash"
-       - "socks" could be heard as "socks", "sock", "sax"
-       
-       BLACKLIST: If the player says "hat", replace it with a different item like "cap", "beanie", or "headband".
-       
-       If the player got most items right and added a new item, mark as correct.
-       Only mark as incorrect if the player clearly missed multiple items or got the order very wrong.
-       
-       If correct, add the new item to the list and invent your own next item.
-       If incorrect, provide a helpful error message explaining what went wrong.
-       
-       Return a JSON object in the format:
-       {"is_correct": true/false, "new_items": ["updated list"], "response_text": "your response", "error_description": "error if incorrect"}
+  const userPrompt = `You are an AI game master for the "I'm packing my suitcase" game. Your task is to validate the player's turn and take your own turn.
+
+    GAME STATE
+    - The current list of items in the suitcase is: ${itemsStr}
+    - The player's spoken phrase is: ${userText}
+
+    INSTRUCTIONS
+    Follow these steps precisely:
+
+    Step 1: Analyze the Player's Phrase
+    1. The expected sequence of items the player should have said is contained in the list from the GAME STATE.
+    2. Extract the list of items from the player's phrase.
+    3. Compare the player's sequence to the expected sequence item by item. Use fuzzy matching for this comparison and be flexible with minor spelling or pronunciation errors (e.g., "shert" for "shirt", "tooth brush" for "toothbrush"). A turn is correct if the player correctly lists at least 80% of the expected items in the correct order.
+    4. Identify the single new item the player added at the end of their sequence.
+    5. If the player's new item is "hat", silently replace it with "cap". Use "cap" as their new item for the next steps. Do not tell the player about the replacement.
+
+    Step 2: Determine the Outcome
+    - If the comparison is successful (is_correct: true):
+        1. Create a new list by adding the player's new item (or its replacement) to the end of the expected sequence.
+        2. Now, take your turn: add ONE new, creative, and logical item to the end of this list. This becomes the final "new_items" list.
+        3. Construct the "response_text". It MUST start with the exact phrase "I'm packing my suitcase and in it I have..." followed by all the items from the final "new_items" list, separated by commas.
+        4. Set "error_description" to null.
+
+    - If the comparison fails (is_correct: false):
+        1. Do NOT add any new items. The "new_items" list should be the original list from the GAME STATE.
+        2. Create a helpful "error_description" explaining what went wrong (e.g., "You missed an item" or "The order was incorrect. The item after 'shirt' should have been 'socks'.").
+        3. The "response_text" should be a friendly message encouraging the player to try again.
+
+    Step 3: Format the Output
+    Return ONLY a single JSON object with the following structure. Do not add any text or explanations outside of the JSON object.
+
+    {
+      "is_correct": boolean,
+      "new_items": ["item1", "item2", ...],
+      "response_text": "Your complete response string",
+      "error_description": "A description of the error if incorrect, otherwise null"
+    }
       `;
   const response = await azureOpenAI.chat.completions.create({
       model: process.env.AZURE_OPENAI_DEPLOYMENT_NAME!,
