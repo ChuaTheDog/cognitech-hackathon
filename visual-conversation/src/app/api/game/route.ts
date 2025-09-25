@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { handleVisualStart } from '@/lib/visual-ai-service'; // We will create this new function
+import { handleVisualStart } from '@/lib/visual-ai-service';
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +14,6 @@ export async function POST(req: NextRequest) {
 
     // Call the new start handler
     const result = await handleVisualStart(imageBuffer);
-
     if (result.success) {
       // Send back the audio of the AI's first question and the initial history
       return NextResponse.json({

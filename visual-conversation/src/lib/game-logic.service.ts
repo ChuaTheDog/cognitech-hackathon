@@ -41,5 +41,5 @@ export async function getVisualConversationResponse(
       ]
   });
 
-  return response.choices[0].message.content || "I'm not sure what to say.";
+  return response.choices[0]?.message.content || "I'm not sure what to say.";
 }

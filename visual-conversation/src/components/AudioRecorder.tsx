@@ -1,28 +1,25 @@
 'use client'
 
-import { Mic, MicOff, Pause, Play, Square, Download, RotateCcw } from 'lucide-react'
+import { Mic, X, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAudioRecorder } from '@/hooks/useAudioRecorder'
 
 interface AudioRecorderProps {
   onRecordingComplete?: (audioBlob: Blob) => void
+  disabled?: boolean
 }
 
-export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
+export function AudioRecorder({ onRecordingComplete, disabled = false }: AudioRecorderProps) {
   const {
     isRecording,
-    isPaused,
     recordingTime,
     audioBlob,
     audioUrl,
     error,
     startRecording,
     stopRecording,
-    pauseRecording,
-    resumeRecording,
     resetRecording,
-    downloadRecording,
   } = useAudioRecorder()
 
   const formatTime = (seconds: number): string => {
@@ -31,14 +28,14 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  const handleStopRecording = () => {
-    stopRecording()
-    if (audioBlob && onRecordingComplete) {
-      onRecordingComplete(audioBlob)
+  const handleSendRecording = async () => {
+    const recordedBlob = await stopRecording()
+    if (recordedBlob && onRecordingComplete) {
+      onRecordingComplete(recordedBlob)
     }
   }
 
-  const handleReset = () => {
+  const handleCancelRecording = () => {
     resetRecording()
   }
 
@@ -60,7 +57,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
             <div className="flex items-center justify-center gap-2 text-red-500">
               <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
               <span className="font-medium">
-                {isPaused ? 'Paused' : 'Recording'} - {formatTime(recordingTime)}
+                Recording - {formatTime(recordingTime)}
               </span>
             </div>
           )}
@@ -82,74 +79,35 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
 
         {/* Recording Controls */}
         <div className="flex justify-center gap-2">
-          {!isRecording && !audioBlob && (
+          {!isRecording && (
             <Button
               onClick={startRecording}
               className="flex items-center gap-2"
               size="lg"
+              disabled={disabled}
             >
               <Mic className="h-4 w-4" />
-              Start Recording
+              {disabled ? 'Wait for instructions...' : 'Start Recording'}
             </Button>
           )}
 
-          {isRecording && !isPaused && (
+          {isRecording && (
             <>
               <Button
-                onClick={pauseRecording}
+                onClick={handleCancelRecording}
                 variant="outline"
                 className="flex items-center gap-2"
               >
-                <Pause className="h-4 w-4" />
-                Pause
+                <X className="h-4 w-4" />
+                Cancel
               </Button>
               <Button
-                onClick={handleStopRecording}
+                onClick={handleSendRecording}
                 variant="destructive"
                 className="flex items-center gap-2"
               >
-                <Square className="h-4 w-4" />
-                Stop
-              </Button>
-            </>
-          )}
-
-          {isRecording && isPaused && (
-            <>
-              <Button
-                onClick={resumeRecording}
-                className="flex items-center gap-2"
-              >
-                <Play className="h-4 w-4" />
-                Resume
-              </Button>
-              <Button
-                onClick={handleStopRecording}
-                variant="destructive"
-                className="flex items-center gap-2"
-              >
-                <Square className="h-4 w-4" />
-                Stop
-              </Button>
-            </>
-          )}
-
-          {audioBlob && !isRecording && (
-            <>
-              <Button
-                onClick={downloadRecording}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Download
-              </Button>
-              <Button
-                onClick={handleReset}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Record Again
+                <Send className="h-4 w-4" />
+                Send
               </Button>
             </>
           )}

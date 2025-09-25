@@ -1,36 +1,47 @@
 import { NextResponse } from 'next/server';
-// highlight-next-line
-import { synthesizeSpeech } from '@/lib/elevenlabs.service'; // We only need the TTS service here
+import { synthesizeSpeech } from '@/lib/elevenlabs.service';
+import fs from 'fs';
+import path from 'path';
 
-export async function POST(req: Request) {
+const WELCOME_MESSAGE = `
+Hello. In this session, you’ll provide a picture, 
+and we’ll explore it together.
+`;
+
+const STATIC_AUDIO_PATH = path.join(process.cwd(), 'public', 'welcome-audio.mp3');
+
+export async function POST() {
   try {
-    const formData = await req.formData();
-    const image = formData.get('image');
-    const prompt = formData.get('prompt');
-
-    if (!(image instanceof File)) {
-      return NextResponse.json(
-        { error: 'Missing required file field: image' },
-        { status: 400 }
-      );
+    let audioData: Buffer;
+    let audioPath = '/welcome-audio.mp3';
+    // Check if the static audio file already exists
+    if (fs.existsSync(STATIC_AUDIO_PATH)) {
+      audioData = fs.readFileSync(STATIC_AUDIO_PATH);
+    } else {
+      // Generate audio from the welcome message
+      audioData = await synthesizeSpeech(WELCOME_MESSAGE);
+      // Ensure the public directory exists
+      const publicDir = path.dirname(STATIC_AUDIO_PATH);
+      if (!fs.existsSync(publicDir)) {
+        fs.mkdirSync(publicDir, { recursive: true });
+      }
+      // Save the audio data to a static file
+      fs.writeFileSync(STATIC_AUDIO_PATH, audioData);
     }
+    return NextResponse.json({
+      success: true,
+      audioPath: audioPath,
+      message: 'Welcome audio ready'
+    });
 
-    const metadata = {
-      ok: true,
-      prompt: typeof prompt === 'string' ? prompt : '',
-      image: {
-        name: image.name,
-        type: image.type,
-        size: image.size,
-      },
-    };
-
-    return NextResponse.json(metadata, { status: 200 });
   } catch (error) {
-    console.error('Error parsing form-data for start route:', error);
+    console.error("Error starting game:", error);
     return NextResponse.json(
-      { error: 'Invalid request.' },
-      { status: 400 }
+      { 
+        success: false,
+        error: 'Could not start the game.' 
+      },
+      { status: 500 }
     );
   }
 }

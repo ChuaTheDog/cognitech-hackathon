@@ -1,7 +1,7 @@
 // ... all the imports
 import { transcribeAudio } from './azure-speech.service';
 import { getImageDescription } from './azure-vision.service';
-import { getVisualConversationResponse, ChatMessage } from './game-logic.service';
+import { getVisualConversationResponse, type ChatMessage } from './game-logic.service';
 import { synthesizeSpeech } from './elevenlabs.service';
 
 /**
