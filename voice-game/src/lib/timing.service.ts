@@ -28,7 +28,6 @@ export class TimingService {
       name: stepName,
       startTime: Date.now(),
     };
-    
   }
 
   endStep(): void {

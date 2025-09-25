@@ -24,16 +24,12 @@ export async function processGameTurn(userText: string, currentItems: string[]):
     `;
 
   const itemsStr = currentItems.join(', ');
-
   const userPrompt = `You are an AI game master for the "I'm packing my suitcase" game. Your task is to validate the player's turn and take your own turn.
-
     GAME STATE
     - The current list of items in the suitcase is: ${itemsStr}
     - The player's spoken phrase is: ${userText}
-
     INSTRUCTIONS
     Follow these steps precisely:
-
     Step 1: Analyze the Player's Phrase
     1. The expected sequence of items the player should have said is contained in the list from the GAME STATE.
     2. Extract the list of items from the player's phrase.
@@ -47,22 +43,18 @@ export async function processGameTurn(userText: string, currentItems: string[]):
         2. Now, take your turn: add ONE new, creative, and logical item to the end of this list. This becomes the final "new_items" list.
         3. Construct the "response_text". It MUST start with the exact phrase "I'm packing my suitcase and in it I have..." followed by all the items from the final "new_items" list, separated by commas.
         4. Set "error_description" to null.
-
     - If the comparison fails (is_correct: false):
         1. Do NOT add any new items. The "new_items" list should be the original list from the GAME STATE.
         2. Create a helpful "error_description" explaining what went wrong (e.g., "You missed an item" or "The order was incorrect. The item after 'shirt' should have been 'socks'.").
         3. The "response_text" should be a friendly message encouraging the player to try again.
-
     Step 3: Format the Output
     Return ONLY a single JSON object with the following structure. Do not add any text or explanations outside of the JSON object.
-
     {
       "is_correct": boolean,
       "new_items": ["item1", "item2", ...],
       "response_text": "Your complete response string",
       "error_description": "A description of the error if incorrect, otherwise null"
-    }
-      `;
+    }`;
   const response = await azureOpenAI.chat.completions.create({
       model: process.env.AZURE_OPENAI_DEPLOYMENT_NAME!,
       messages: [

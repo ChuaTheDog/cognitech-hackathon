@@ -6,6 +6,8 @@ import ffmpeg from 'fluent-ffmpeg';
 
 const speechConfig = SpeechConfig.fromSubscription(process.env.AZURE_SPEECH_KEY!, process.env.AZURE_SPEECH_REGION!);
 speechConfig.speechRecognitionLanguage = 'en-US';
+speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '2000');
+speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '500');
 
 async function convertAudioToWav(inputBlob: Blob): Promise<string> {
   const format = inputBlob.type.split('/')[1] || 'webm';
@@ -19,13 +21,15 @@ async function convertAudioToWav(inputBlob: Blob): Promise<string> {
     ffmpeg(inputPath)
       .toFormat('wav')
       .audioCodec('pcm_s16le')
-      .audioFrequency(16000)
+      .audioFrequency(8000)
       .audioChannels(1)
-      .audioBitrate('128k')
+      .audioBitrate('32k')
       .audioFilters([
-        'highpass=f=80',
-        'lowpass=f=8000',
-        'volume=1.5'
+        'volume=1.2'
+      ])
+      .outputOptions([
+        '-threads', '0',
+        '-preset', 'ultrafast'
       ])
       .on('end', () => {
         fs.unlinkSync(inputPath);
