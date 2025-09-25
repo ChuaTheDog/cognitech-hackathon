@@ -8,53 +8,48 @@ const azureOpenAI = new OpenAI({
   defaultHeaders: { 'api-key': process.env.AZURE_OPENAI_KEY },
 });
 
+// --- Type Definition ---
+export type ChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
 // --- Main Exported Function ---
-export async function processGameTurn(userText: string, currentItems: string[]): Promise<any> {
-  const systemPrompt = `
-    You are the host of the game "I'm packing my suitcase". You must be strict with the rules.
-    Your response must be a single, valid JSON object and nothing else. Do not include any text before or after the JSON.
-    `;
+export async function getVisualConversationResponse(
+  imageDescription: string,
+  userQuery: string,
+  history: ChatMessage[]
+): Promise<string> {
+  const systemPrompt = `Role: You are a friendly and supportive speech therapist.
+Audience: Children and young adults.
+Context: The learner is shown a picture (uploaded by the user). Your responsibility is to bring them into natural conversation about the picture.
+Instructions:
+	1. Begin by asking an open-ended question about the picture (for example, “What do you see?“).
+	2. Encourage the learner to describe details, feelings, actions, and possibilities in the picture.
+	3. If responses are short, gently scaffold by asking follow-up questions.
+	4. Expand on what the learner says in a natural way, modeling full sentences without sounding corrective.
+	5. Always keep the tone warm, conversational, and encouraging.
+	6. Do not start with suggestions or lists — the interaction should unfold naturally from the learner’s first response.
+Goal: Elicit speech through picture description, build vocabulary, and support sentence formation in a natural, engaging conversation.`; 
 
-  const itemsStr = currentItems.join(', ');
-  const isFirstTurn = currentItems.length === 0;
+  // We build the message list for the LLM
+  let messages: ChatMessage[] = [...history];
 
-  const userPrompt = isFirstTurn
-    ? `This is the first turn. The player said: "${userText}".
-       Extract the item the player is packing. Invent and add your own next item.
-       Formulate the response according to the template "I'm packing my suitcase and in it I have [player's item] and [your item]".
-       
-       Return a JSON object in the format:
-       {"is_correct": true, "new_items": ["player item", "your item"], "response_text": "your formulated response"}
-      `
-    : `The current list of items is: [${itemsStr}].
-       The player must repeat this list in the correct order and add one new item.
-       The player's phrase is: "${userText}".
-       // ... (rest of the prompt is the same)
-      `;
+  if (history.length === 0) {
+    // First turn: provide image description as context along with the user's first query
+    messages.push({ role: 'user', content: `Context: The user is looking at a picture described as: "${imageDescription}". The user's first question is: "${userQuery}"` });
+  } else {
+    // Subsequent turns: just add the new user query
+    messages.push({ role: 'user', content: userQuery });
+  }
 
   const response = await azureOpenAI.chat.completions.create({
       model: process.env.AZURE_OPENAI_DEPLOYMENT_NAME!,
       messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
+        { role: "system", content: systemPrompt },
+        ...messages
       ]
   });
 
-  const rawResponse = response?.choices[0]?.message?.content!;
-
-  // This handles cases where the LLM wraps the JSON in Markdown code blocks.
-  try {
-    const jsonStartIndex = rawResponse.indexOf('{');
-    const jsonEndIndex = rawResponse.lastIndexOf('}');
-    
-    if (jsonStartIndex === -1 || jsonEndIndex === -1) {
-      throw new Error("No JSON object found in the LLM response.");
-    }
-
-    const jsonString = rawResponse.substring(jsonStartIndex, jsonEndIndex + 1);
-    return JSON.parse(jsonString);
-  } catch (error) {
-    console.error("Failed to parse JSON from LLM response:", rawResponse);
-    throw error; 
-  }
+  return response.choices[0]?.message.content || "I'm not sure what to say.";
 }

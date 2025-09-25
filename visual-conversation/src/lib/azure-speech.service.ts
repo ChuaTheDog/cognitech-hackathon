@@ -1,6 +1,3 @@
-// src/lib/azure-speech.service.ts
-
-// highlight-next-line
 import { SpeechConfig, AudioConfig, SpeechRecognizer, ResultReason } from 'microsoft-cognitiveservices-speech-sdk';
 import fs from 'fs';
 import path from 'path';

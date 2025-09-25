@@ -36,6 +36,7 @@ export async function processGameTurn(userText: string, currentItems: string[]):
     3. Compare the player's sequence to the expected sequence item by item. Use fuzzy matching for this comparison and be flexible with minor spelling or pronunciation errors (e.g., "shert" for "shirt", "tooth brush" for "toothbrush"). A turn is correct if the player correctly lists at least 80% of the expected items in the correct order.
     4. Identify the single new item the player added at the end of their sequence.
     5. If the player's new item is "hat", silently replace it with "cap". Use "cap" as their new item for the next steps. Do not tell the player about the replacement.
+
     Step 2: Determine the Outcome
     - If the comparison is successful (is_correct: true):
         1. Create a new list by adding the player's new item (or its replacement) to the end of the expected sequence.
